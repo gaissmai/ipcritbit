@@ -31,7 +31,7 @@ func genCIDR(rand *rand.Rand) netip.Prefix {
 	return netip.PrefixFrom(addr, bits)
 }
 
-func buildRTable(keys []netip.Prefix) *ipcritbit.RouteTable {
+func buildRTable(keys []netip.Prefix) ipcritbit.RouteTable {
 	rtbl := ipcritbit.New()
 	for i := 0; i < len(keys); i++ {
 		rtbl.Add(keys[i], nil)

@@ -12,15 +12,15 @@ type RouteTable struct {
 }
 
 // Create IP routing table
-func New() *RouteTable {
-	return &RouteTable{
+func New() RouteTable {
+	return RouteTable{
 		tree4: newTree(),
 		tree6: newTree(),
 	}
 }
 
 // Add a route.
-func (t *RouteTable) Add(p netip.Prefix, value interface{}) {
+func (t RouteTable) Add(p netip.Prefix, value interface{}) {
 	key := pfxToKey(p)
 	if p.Addr().Is4() {
 		t.tree4.set(key, value)
@@ -30,7 +30,7 @@ func (t *RouteTable) Add(p netip.Prefix, value interface{}) {
 }
 
 // Delete a specific route.
-func (t *RouteTable) Delete(p netip.Prefix) (value interface{}, ok bool) {
+func (t RouteTable) Delete(p netip.Prefix) (value interface{}, ok bool) {
 	if p.Addr().Is4() {
 		return t.tree4.delete(pfxToKey(p))
 	}
@@ -38,7 +38,7 @@ func (t *RouteTable) Delete(p netip.Prefix) (value interface{}, ok bool) {
 }
 
 // Get a specific route.
-func (t *RouteTable) Get(p netip.Prefix) (value interface{}, ok bool) {
+func (t RouteTable) Get(p netip.Prefix) (value interface{}, ok bool) {
 	if p.Addr().Is4() {
 		return t.tree4.get(pfxToKey(p))
 	}
@@ -46,7 +46,7 @@ func (t *RouteTable) Get(p netip.Prefix) (value interface{}, ok bool) {
 }
 
 // Return a specific route by using the longest prefix matching.
-func (t *RouteTable) LookupCIDR(p netip.Prefix) (route netip.Prefix, value interface{}) {
+func (t RouteTable) LookupCIDR(p netip.Prefix) (route netip.Prefix, value interface{}) {
 	if p.Addr().Is4() {
 		if k, v := t.match4(pfxToKey(p)); k != nil {
 			unmarshal(&route, k)
@@ -62,7 +62,7 @@ func (t *RouteTable) LookupCIDR(p netip.Prefix) (route netip.Prefix, value inter
 }
 
 // Return a specific route by using the longest prefix matching.
-func (t *RouteTable) LookupIP(ip netip.Addr) (route netip.Prefix, value interface{}) {
+func (t RouteTable) LookupIP(ip netip.Addr) (route netip.Prefix, value interface{}) {
 	k, v := t.matchIP(ip)
 	if k != nil {
 		unmarshal(&route, k)
@@ -71,7 +71,7 @@ func (t *RouteTable) LookupIP(ip netip.Addr) (route netip.Prefix, value interfac
 	return
 }
 
-func (t *RouteTable) matchIP(ip netip.Addr) (k []byte, v interface{}) {
+func (t RouteTable) matchIP(ip netip.Addr) (k []byte, v interface{}) {
 	if ip.Is4() {
 		p := netip.PrefixFrom(ip, 32)
 		k, v = t.match4(pfxToKey(p))
@@ -82,7 +82,7 @@ func (t *RouteTable) matchIP(ip netip.Addr) (k []byte, v interface{}) {
 	return
 }
 
-func (t *RouteTable) match4(key []byte) ([]byte, interface{}) {
+func (t RouteTable) match4(key []byte) ([]byte, interface{}) {
 	if t.tree4.items > 0 {
 		if node := lookup(&t.tree4.root, key, false); node != nil {
 			return node.external.key, node.external.value
@@ -91,7 +91,7 @@ func (t *RouteTable) match4(key []byte) ([]byte, interface{}) {
 	return nil, nil
 }
 
-func (t *RouteTable) match6(key []byte) ([]byte, interface{}) {
+func (t RouteTable) match6(key []byte) ([]byte, interface{}) {
 	if t.tree6.items > 0 {
 		if node := lookup(&t.tree6.root, key, false); node != nil {
 			return node.external.key, node.external.value
@@ -151,7 +151,7 @@ func lookup(p *node, key []byte, backtracking bool) *node {
 
 // Walk iterates routes from a given route, adapter for ipcritbit.walk
 // handle is called with arguments route and value (if handle returns `false`, the iteration is aborted)
-func (t *RouteTable) Walk(p netip.Prefix, handle func(netip.Prefix, interface{}) bool) {
+func (t RouteTable) Walk(p netip.Prefix, handle func(netip.Prefix, interface{}) bool) {
 	key := pfxToKey(p)
 	if key == nil {
 		t.tree4.walk(nil, func(currentKey []byte, value interface{}) bool {
@@ -180,19 +180,19 @@ func (t *RouteTable) Walk(p netip.Prefix, handle func(netip.Prefix, interface{})
 }
 
 // Dump routing table. (for debugging)
-func (t *RouteTable) Dump(w io.Writer) {
+func (t RouteTable) Dump(w io.Writer) {
 	t.tree4.dump(w)
 	t.tree6.dump(w)
 }
 
 // Deletes all routes.
-func (t *RouteTable) Clear() {
+func (t RouteTable) Clear() {
 	t.tree4.clear()
 	t.tree6.clear()
 }
 
 // Returns number of routes, all IP versions.
-func (t *RouteTable) Size() int {
+func (t RouteTable) Size() int {
 	return t.tree4.items + t.tree6.items
 }
 

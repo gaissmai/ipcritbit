@@ -43,9 +43,9 @@ func TestNetip(t *testing.T) {
 	}
 }
 
-func checkMatchIP(t *testing.T, trie *ipcritbit.RouteTable, probe, expect string) {
+func checkMatchIP(t *testing.T, rtbl ipcritbit.RouteTable, probe, expect string) {
 	ip := netip.MustParseAddr(probe)
-	route, value := trie.LookupIP(ip)
+	route, value := rtbl.LookupIP(ip)
 	if cidr := route.String(); expect != cidr {
 		t.Errorf("MatchIP() - %s: expected [%s], actual [%s]", probe, expect, cidr)
 	}
@@ -62,7 +62,7 @@ func checkMatchIP(t *testing.T, trie *ipcritbit.RouteTable, probe, expect string
 	}
 }
 
-func buildTestNetip(t *testing.T) *ipcritbit.RouteTable {
+func buildTestNetip(t *testing.T) ipcritbit.RouteTable {
 	rtbl := ipcritbit.New()
 
 	cidrs := []netip.Prefix{

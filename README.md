@@ -2,7 +2,7 @@ ipcritbit
 =========
 A [critbit-tree](http://cr.yp.to/critbit.html) implementation in golang for fast IP lookup.
 
-The [original](https://github.com/k-sone/critbitgo) has been fork, modified and reduced to `net/netip` addresses and prefixes.
+The [original](https://github.com/k-sone/critbitgo) has been forked, modified and reduced to LPM-lookups for `net/netip` addresses and prefixes.
 Both IP versions are supported transparently. 
 
 Usage
