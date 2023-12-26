@@ -9,10 +9,24 @@ Usage
 --------
 
 ```go
-// New routing table.
-rtbl := ipcritbit.New()
+import "github.com/gaissmai/ipcritbit"
 
- ... TODO
+type RouteTable struct { // Has unexported fields.  }
+
+func New() RouteTable
+
+func (t RouteTable) Add(p netip.Prefix, value interface{})
+func (t RouteTable) Get(p netip.Prefix) (value interface{}, ok bool)
+func (t RouteTable) Delete(p netip.Prefix) (value interface{}, ok bool)
+
+func (t RouteTable) LookupIP(ip netip.Addr) (route netip.Prefix, value interface{})
+func (t RouteTable) LookupCIDR(p netip.Prefix) (route netip.Prefix, value interface{})
+
+func (t RouteTable) Clear()
+func (t RouteTable) Size() int
+
+func (t RouteTable) Walk(callback func(prefix netip.Prefix, value interface{}) bool)
+func (t RouteTable) Dump(w io.Writer)
 ```
 
 License
