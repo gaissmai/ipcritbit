@@ -1,26 +1,24 @@
-package critbitgo_test
+package ipcritbit
 
 import (
 	"bytes"
 	"math/rand"
 	"testing"
-
-	"github.com/k-sone/critbitgo"
 )
 
-func buildTrie(t *testing.T, keys []string) *critbitgo.Trie {
-	trie := critbitgo.NewTrie()
+func buildTrie(t *testing.T, keys []string) *critBitTree {
+	trie := newTree()
 	for _, key := range keys {
-		if !trie.Insert([]byte(key), key) {
-			t.Errorf("Insert() - failed insert \"%s\"\n%s", key, dumpTrie(trie))
+		if !trie.insert([]byte(key), key) {
+			t.Errorf("insert() - failed insert \"%s\"\n%s", key, dumpTrie(trie))
 		}
 	}
 	return trie
 }
 
-func dumpTrie(trie *critbitgo.Trie) string {
+func dumpTrie(trie *critBitTree) string {
 	buf := bytes.NewBufferString("")
-	trie.Dump(buf)
+	trie.dump(buf)
 	return buf.String()
 }
 
@@ -42,16 +40,16 @@ func TestInsert(t *testing.T) {
 		ltrie := buildTrie(t, lkeys)
 		ldump := dumpTrie(ltrie)
 		if dump != ldump {
-			t.Errorf("Insert() - different tries\norigin:\n%s\nother:\n%s\n", dump, ldump)
+			t.Errorf("insert() - different tries\norigin:\n%s\nother:\n%s\n", dump, ldump)
 		}
 	}
 
 	// error check
-	if trie.Insert([]byte("a"), nil) {
-		t.Error("Insert() - check exists")
+	if trie.insert([]byte("a"), nil) {
+		t.Error("insert() - check exists")
 	}
-	if !trie.Insert([]byte("c"), nil) {
-		t.Error("Insert() - check not exists")
+	if !trie.insert([]byte("c"), nil) {
+		t.Error("insert() - check not exists")
 	}
 }
 
@@ -59,10 +57,10 @@ func TestSet(t *testing.T) {
 	keys := []string{"", "a", "aa", "b", "bb", "ab", "ba", "aba", "bab"}
 	trie := buildTrie(t, keys)
 
-	trie.Set([]byte("a"), 100)
-	v, _ := trie.Get([]byte("a"))
+	trie.set([]byte("a"), 100)
+	v, _ := trie.get([]byte("a"))
 	if n, ok := v.(int); !ok || n != 100 {
-		t.Errorf("Set() - failed replace - %v", v)
+		t.Errorf("set() - failed replace - %v", v)
 	}
 }
 
@@ -71,13 +69,13 @@ func TestContains(t *testing.T) {
 	trie := buildTrie(t, keys)
 
 	for _, key := range keys {
-		if !trie.Contains([]byte(key)) {
-			t.Errorf("Contains() - not found - %s", key)
+		if !trie.contains([]byte(key)) {
+			t.Errorf("contains() - not found - %s", key)
 		}
 	}
 
-	if trie.Contains([]byte("aaa")) {
-		t.Error("Contains() - phantom found")
+	if trie.contains([]byte("aaa")) {
+		t.Error("contains() - phantom found")
 	}
 }
 
@@ -86,12 +84,12 @@ func TestGet(t *testing.T) {
 	trie := buildTrie(t, keys)
 
 	for _, key := range keys {
-		if value, ok := trie.Get([]byte(key)); value != key || !ok {
+		if value, ok := trie.get([]byte(key)); value != key || !ok {
 			t.Errorf("Get() - not found - %s", key)
 		}
 	}
 
-	if value, ok := trie.Get([]byte("aaa")); value != nil || ok {
+	if value, ok := trie.get([]byte("aaa")); value != nil || ok {
 		t.Error("Get() - phantom found")
 	}
 }
@@ -101,18 +99,18 @@ func TestDelete(t *testing.T) {
 	trie := buildTrie(t, keys)
 
 	for i, key := range keys {
-		if !trie.Contains([]byte(key)) {
+		if !trie.contains([]byte(key)) {
 			t.Errorf("Delete() - not exists - %s", key)
 		}
-		if v, ok := trie.Delete([]byte(key)); !ok || v != key {
+		if v, ok := trie.delete([]byte(key)); !ok || v != key {
 			t.Errorf("Delete() - failed - %s", key)
 		}
-		if trie.Contains([]byte(key)) {
+		if trie.contains([]byte(key)) {
 			t.Errorf("Delete() - exists - %s", key)
 		}
 		if i != len(keys) {
 			for _, key2 := range keys[i+1:] {
-				if !trie.Contains([]byte(key2)) {
+				if !trie.contains([]byte(key2)) {
 					t.Errorf("Delete() - other not exists - %s", key2)
 				}
 			}
@@ -124,97 +122,15 @@ func TestSize(t *testing.T) {
 	keys := []string{"", "a", "aa", "b", "bb", "ab", "ba", "aba", "bab"}
 	trie := buildTrie(t, keys)
 	klen := len(keys)
-	if s := trie.Size(); s != klen {
+	if s := trie.size(); s != klen {
 		t.Errorf("Size() - expected [%d], actual [%d]", klen, s)
 	}
 
 	for i, key := range keys {
-		trie.Delete([]byte(key))
-		if s := trie.Size(); s != klen-(i+1) {
+		trie.delete([]byte(key))
+		if s := trie.size(); s != klen-(i+1) {
 			t.Errorf("Size() - expected [%d], actual [%d]", klen, s)
 		}
-	}
-}
-
-func TestAllprefixed(t *testing.T) {
-	keys := []string{"", "a", "aa", "b", "bb", "ab", "ba", "aba", "bab", "bc"}
-	trie := buildTrie(t, keys)
-
-	elems := make([]string, 0, len(keys))
-	handle := func(key []byte, value interface{}) bool {
-		if k := string(key); k == value {
-			elems = append(elems, k)
-		}
-		return true
-	}
-	if !trie.Allprefixed([]byte{}, handle) {
-		t.Error("Allprefixed() - invalid result")
-	}
-	if len(elems) != 10 {
-		t.Errorf("Allprefixed() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"", "a", "aa", "ab", "aba", "b", "ba", "bab", "bb", "bc"} {
-		if key != elems[i] {
-			t.Errorf("Allprefixed() - not found [%s]", key)
-		}
-	}
-
-	elems = make([]string, 0, len(keys))
-	if !trie.Allprefixed([]byte("a"), handle) {
-		t.Error("Allprefixed() - invalid result")
-	}
-	if len(elems) != 4 {
-		t.Errorf("Allprefixed() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"a", "aa", "ab", "aba"} {
-		if key != elems[i] {
-			t.Errorf("Allprefixed() - not found [%s]", key)
-		}
-	}
-
-	elems = make([]string, 0, len(keys))
-	if !trie.Allprefixed([]byte("bb"), handle) {
-		t.Error("Allprefixed() - invalid result")
-	}
-	if len(elems) != 1 {
-		t.Errorf("Allprefixed() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"bb"} {
-		if key != elems[i] {
-			t.Errorf("Allprefixed() - not found [%s]", key)
-		}
-	}
-
-	elems = make([]string, 0, len(keys))
-	handle = func(key []byte, value interface{}) bool {
-		if k := string(key); k == value {
-			elems = append(elems, k)
-		}
-		if string(key) == "aa" {
-			return false
-		}
-		return true
-	}
-	if trie.Allprefixed([]byte("a"), handle) {
-		t.Error("Allprefixed() - invalid result")
-	}
-	if len(elems) != 2 {
-		t.Errorf("Allprefixed() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"a", "aa"} {
-		if key != elems[i] {
-			t.Errorf("Allprefixed() - not found [%s]", key)
-		}
-	}
-
-	keys = []string{"bad", "badbad"}
-	trie = buildTrie(t, keys)
-	elems = make([]string, 0, len(keys))
-	if !trie.Allprefixed([]byte("ad"), handle) {
-		t.Error("Allprefixed() - invalid result")
-	}
-	if len(elems) != 0 {
-		t.Errorf("Allprefixed() - invalid elems length [%v]", elems)
 	}
 }
 
@@ -232,19 +148,19 @@ func TestLongestPrefix(t *testing.T) {
 		"bc":  "b",
 	}
 	for g, k := range expects {
-		if key, value, ok := trie.LongestPrefix([]byte(g)); !ok || string(key) != k || value != k {
-			t.Errorf("LongestPrefix() - invalid result - %s not %s", key, g)
+		if key, value, ok := trie.longestPrefix([]byte(g)); !ok || string(key) != k || value != k {
+			t.Errorf("longestPrefix() - invalid result - %s not %s", key, g)
 		}
 	}
 
-	if _, _, ok := trie.LongestPrefix([]byte{}); ok {
-		t.Error("LongestPrefix() - invalid result - not empty")
+	if _, _, ok := trie.longestPrefix([]byte{}); ok {
+		t.Error("longestPrefix() - invalid result - not empty")
 	}
-	if _, _, ok := trie.LongestPrefix([]byte("^")); ok {
-		t.Error("LongestPrefix() - invalid result - not empty")
+	if _, _, ok := trie.longestPrefix([]byte("^")); ok {
+		t.Error("longestPrefix() - invalid result - not empty")
 	}
-	if _, _, ok := trie.LongestPrefix([]byte("c")); ok {
-		t.Error("LongestPrefix() - invalid result - not empty")
+	if _, _, ok := trie.longestPrefix([]byte("c")); ok {
+		t.Error("longestPrefix() - invalid result - not empty")
 	}
 }
 
@@ -259,41 +175,41 @@ func TestWalk(t *testing.T) {
 		}
 		return true
 	}
-	if !trie.Walk([]byte{}, handle) {
-		t.Error("Walk() - invalid result")
+	if !trie.walk([]byte{}, handle) {
+		t.Error("walk() - invalid result")
 	}
 	if len(elems) != 9 {
-		t.Errorf("Walk() - invalid elems length [%v]", elems)
+		t.Errorf("walk() - invalid elems length [%v]", elems)
 	}
 	for i, key := range []string{"", "a", "aa", "ab", "aba", "b", "ba", "bab", "bb"} {
 		if key != elems[i] {
-			t.Errorf("Walk() - not found [%s]", key)
+			t.Errorf("walk() - not found [%s]", key)
 		}
 	}
 
 	elems = make([]string, 0, len(keys))
-	if !trie.Walk([]byte("ab"), handle) {
-		t.Error("Walk() - invalid result")
+	if !trie.walk([]byte("ab"), handle) {
+		t.Error("walk() - invalid result")
 	}
 	if len(elems) != 6 {
-		t.Errorf("Walk() - invalid elems length [%v]", elems)
+		t.Errorf("walk() - invalid elems length [%v]", elems)
 	}
 	for i, key := range []string{"ab", "aba", "b", "ba", "bab", "bb"} {
 		if key != elems[i] {
-			t.Errorf("Walk() - not found [%s]", key)
+			t.Errorf("walk() - not found [%s]", key)
 		}
 	}
 
 	elems = make([]string, 0, len(keys))
-	if !trie.Walk(nil, handle) {
-		t.Error("Walk() - invalid result")
+	if !trie.walk(nil, handle) {
+		t.Error("walk() - invalid result")
 	}
 	if len(elems) != 9 {
-		t.Errorf("Walk() - invalid elems length [%v]", elems)
+		t.Errorf("walk() - invalid elems length [%v]", elems)
 	}
 	for i, key := range []string{"", "a", "aa", "ab", "aba", "b", "ba", "bab", "bb"} {
 		if key != elems[i] {
-			t.Errorf("Walk() - not found [%s]", key)
+			t.Errorf("walk() - not found [%s]", key)
 		}
 	}
 
@@ -307,71 +223,31 @@ func TestWalk(t *testing.T) {
 		}
 		return true
 	}
-	if trie.Walk([]byte("a"), handle) {
-		t.Error("Walk() - invalid result")
+	if trie.walk([]byte("a"), handle) {
+		t.Error("walk() - invalid result")
 	}
 	if len(elems) != 2 {
-		t.Errorf("Walk() - invalid elems length [%v]", elems)
+		t.Errorf("walk() - invalid elems length [%v]", elems)
 	}
 	for i, key := range []string{"a", "aa"} {
 		if key != elems[i] {
-			t.Errorf("Walk() - not found [%s]", key)
+			t.Errorf("walk() - not found [%s]", key)
 		}
 	}
 
-	if trie.Walk([]byte("^"), handle) {
-		t.Error("Walk() - invalid result")
+	if trie.walk([]byte("^"), handle) {
+		t.Error("walk() - invalid result")
 	}
-	if trie.Walk([]byte("aaa"), handle) {
-		t.Error("Walk() - invalid result")
+	if trie.walk([]byte("aaa"), handle) {
+		t.Error("walk() - invalid result")
 	}
-	if trie.Walk([]byte("c"), handle) {
-		t.Error("Walk() - invalid result")
+	if trie.walk([]byte("c"), handle) {
+		t.Error("walk() - invalid result")
 	}
-}
-
-func TestKeyContainsZeroValue(t *testing.T) {
-	trie := critbitgo.NewTrie()
-	trie.Insert([]byte{1, 0, 1}, nil)
-	trie.Insert([]byte{1}, nil)
-	trie.Insert([]byte{0, 1, 1}, nil)
-	trie.Insert([]byte{}, nil)
-	trie.Insert([]byte{0, 0, 1}, nil)
-	trie.Insert([]byte{1, 1}, nil)
-	trie.Insert([]byte{1, 1, 1}, nil)
-	trie.Insert([]byte{0, 1}, nil)
-	trie.Insert([]byte{0, 1, 0}, nil)
-	trie.Insert([]byte{0, 0}, nil)
-	trie.Insert([]byte{0, 0, 0}, nil)
-	trie.Insert([]byte{0}, nil)
-
-	var index int
-	exp := [][]byte{
-		[]byte{},
-		[]byte{0},
-		[]byte{0, 0},
-		[]byte{0, 0, 0},
-		[]byte{0, 0, 1},
-		[]byte{0, 1},
-		[]byte{0, 1, 0},
-		[]byte{0, 1, 1},
-		[]byte{1},
-		[]byte{1, 0, 1},
-		[]byte{1, 1},
-		[]byte{1, 1, 1},
-	}
-	handle := func(key []byte, _ interface{}) bool {
-		if !bytes.Equal(exp[index], key) {
-			t.Errorf("Key Order - index=%d, expected [%x], actula [%x]", index, exp[index], key)
-		}
-		index += 1
-		return true
-	}
-	trie.Allprefixed([]byte(""), handle)
 }
 
 func TestEmptyTree(t *testing.T) {
-	trie := critbitgo.NewTrie()
+	trie := newTree()
 	key := []byte{0, 1, 2}
 	handle := func(_ []byte, _ interface{}) bool { return true }
 	assert := func(n string, f func()) {
@@ -383,10 +259,9 @@ func TestEmptyTree(t *testing.T) {
 		f()
 	}
 
-	assert("Contains", func() { trie.Contains(key) })
-	assert("Get", func() { trie.Get(key) })
-	assert("Delete", func() { trie.Delete(key) })
-	assert("LongestPrefix", func() { trie.LongestPrefix(key) })
-	assert("Allprefixed", func() { trie.Allprefixed(key, handle) })
-	assert("Walk", func() { trie.Walk(key, handle) })
+	assert("contains", func() { trie.contains(key) })
+	assert("get", func() { trie.get(key) })
+	assert("delete", func() { trie.delete(key) })
+	assert("longestPrefix", func() { trie.longestPrefix(key) })
+	assert("walk", func() { trie.walk(key, handle) })
 }

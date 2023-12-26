@@ -1,41 +1,18 @@
-[![Build Status](https://travis-ci.org/k-sone/critbitgo.svg?branch=master)](https://travis-ci.org/k-sone/critbitgo)
-
-critbitgo
+ipcritbit
 =========
+A [critbit-tree](http://cr.yp.to/critbit.html) implementation in golang for fast IP lookup.
 
-[Crit-bit trees](http://cr.yp.to/critbit.html) in golang and its applications.
-
-This implementation extended to handle the key that contains a null character from [C implementation](https://github.com/agl/critbit).
+The [original](https://github.com/k-sone/critbitgo) has been fork, modified and reduced to `net/netip` addresses and prefixes.
+Both IP versions are supported transparently. 
 
 Usage
 --------
 
 ```go
-// Create Trie
-trie := critbitgo.NewTrie()
+// New routing table.
+rtbl := ipcritbit.New()
 
-// Insert
-trie.Insert([]byte("aa"), "value1")
-trie.Insert([]byte("bb"), "value2")
-trie.Insert([]byte("ab"), "value3")
-
-// Get
-v, ok := trie.Get([]byte("aa"))
-fmt.Println(v, ok)    // -> value1 true
-
-// Iterate containing keys
-trie.Allprefixed([]byte{}, func(key []byte, value interface{}) bool {
-    fmt.Println(key, value) // -> [97 97] value1
-                            //    [97 98] value3
-                            //    [98 98] value2
-    return true
-})
-
-// Delete
-v, ok = trie.Delete([]byte("aa"))
-fmt.Println(v, ok)    // -> value1 true
-v, ok = trie.Delete([]byte("aa"))
-fmt.Println(v, ok)    // -> <nil> false
+ ... TODO
 ```
 
 License

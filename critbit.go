@@ -1,4 +1,4 @@
-package critbitgo
+package ipcritbit
 
 import (
 	"bytes"
@@ -22,6 +22,10 @@ func buildMsbMatrix() {
 	}
 }
 
+func init() {
+	buildMsbMatrix()
+}
+
 type node struct {
 	internal *internal
 	external *external
@@ -37,6 +41,17 @@ type internal struct {
 type external struct {
 	key   []byte
 	value interface{}
+}
+
+// critBitTree
+type critBitTree struct {
+	root  node
+	items int
+}
+
+// create a tree.
+func newTree() *critBitTree {
+	return &critBitTree{}
 }
 
 // finding the critical bit.
@@ -75,14 +90,8 @@ func (n *internal) direction(key []byte) int {
 	return 0
 }
 
-// Crit-bit Tree
-type Trie struct {
-	root node
-	size int
-}
-
 // searching the tree.
-func (t *Trie) search(key []byte) *node {
+func (t *critBitTree) search(key []byte) *node {
 	n := &t.root
 	for n.internal != nil {
 		n = &n.internal.child[n.internal.direction(key)]
@@ -91,7 +100,7 @@ func (t *Trie) search(key []byte) *node {
 }
 
 // membership testing.
-func (t *Trie) Contains(key []byte) bool {
+func (t *critBitTree) contains(key []byte) bool {
 	if n := t.search(key); n.external != nil && bytes.Equal(n.external.key, key) {
 		return true
 	}
@@ -100,22 +109,22 @@ func (t *Trie) Contains(key []byte) bool {
 
 // get member.
 // if `key` is in Trie, `ok` is true.
-func (t *Trie) Get(key []byte) (value interface{}, ok bool) {
+func (t *critBitTree) get(key []byte) (value interface{}, ok bool) {
 	if n := t.search(key); n.external != nil && bytes.Equal(n.external.key, key) {
 		return n.external.value, true
 	}
 	return
 }
 
-// insert into the tree (replaceable).
-func (t *Trie) insert(key []byte, value interface{}, replace bool) bool {
+// insertHelper into the tree (replaceable).
+func (t *critBitTree) insertHelper(key []byte, value interface{}, replace bool) bool {
 	// an empty tree
-	if t.size == 0 {
+	if t.items == 0 {
 		t.root.external = &external{
 			key:   key,
 			value: value,
 		}
-		t.size = 1
+		t.items = 1
 		return true
 	}
 
@@ -159,26 +168,26 @@ func (t *Trie) insert(key []byte, value interface{}, replace bool) bool {
 		wherep.external = nil
 	}
 	wherep.internal = newNode
-	t.size += 1
+	t.items += 1
 	return true
 }
 
 // insert into the tree.
 // if `key` is alredy in Trie, return false.
-func (t *Trie) Insert(key []byte, value interface{}) bool {
-	return t.insert(key, value, false)
+func (t *critBitTree) insert(key []byte, value interface{}) bool {
+	return t.insertHelper(key, value, false)
 }
 
 // set into the tree.
-func (t *Trie) Set(key []byte, value interface{}) {
-	t.insert(key, value, true)
+func (t *critBitTree) set(key []byte, value interface{}) {
+	t.insertHelper(key, value, true)
 }
 
 // deleting elements.
 // if `key` is in Trie, `ok` is true.
-func (t *Trie) Delete(key []byte) (value interface{}, ok bool) {
+func (t *critBitTree) delete(key []byte) (value interface{}, ok bool) {
 	// an empty tree
-	if t.size == 0 {
+	if t.items == 0 {
 		return
 	}
 
@@ -208,83 +217,40 @@ func (t *Trie) Delete(key []byte) (value interface{}, ok bool) {
 		whereq.internal = othern.internal
 		whereq.external = othern.external
 	}
-	t.size -= 1
+	t.items -= 1
 	return
 }
 
 // clearing a tree.
-func (t *Trie) Clear() {
+func (t *critBitTree) clear() {
 	t.root.internal = nil
 	t.root.external = nil
-	t.size = 0
+	t.items = 0
 }
 
 // return the number of key in a tree.
-func (t *Trie) Size() int {
-	return t.size
-}
-
-// fetching elements with a given prefix.
-// handle is called with arguments key and value (if handle returns `false`, the iteration is aborted)
-func (t *Trie) Allprefixed(prefix []byte, handle func(key []byte, value interface{}) bool) bool {
-	// an empty tree
-	if t.size == 0 {
-		return true
-	}
-
-	// walk tree, maintaining top pointer
-	p := &t.root
-	top := p
-	if len(prefix) > 0 {
-		for q := p.internal; q != nil; q = p.internal {
-			p = &q.child[q.direction(prefix)]
-			if q.offset < len(prefix) {
-				top = p
-			}
-		}
-
-		// check prefix
-		if !bytes.HasPrefix(p.external.key, prefix) {
-			return true
-		}
-	}
-
-	return allprefixed(top, handle)
-}
-
-func allprefixed(n *node, handle func([]byte, interface{}) bool) bool {
-	if n.internal != nil {
-		// dealing with an internal node while recursing
-		for i := 0; i < 2; i++ {
-			if !allprefixed(&n.internal.child[i], handle) {
-				return false
-			}
-		}
-	} else {
-		// dealing with an external node while recursing
-		return handle(n.external.key, n.external.value)
-	}
-	return true
+func (t *critBitTree) size() int {
+	return t.items
 }
 
 // Search for the longest matching key from the beginning of the given key.
 // if `key` is in Trie, `ok` is true.
-func (t *Trie) LongestPrefix(given []byte) (key []byte, value interface{}, ok bool) {
+func (t *critBitTree) longestPrefix(given []byte) (key []byte, value interface{}, ok bool) {
 	// an empty tree
-	if t.size == 0 {
+	if t.items == 0 {
 		return
 	}
-	return longestPrefix(&t.root, given)
+	return longestPrefixHelper(&t.root, given)
 }
 
-func longestPrefix(n *node, key []byte) ([]byte, interface{}, bool) {
+func longestPrefixHelper(n *node, key []byte) ([]byte, interface{}, bool) {
 	if n.internal != nil {
 		direction := n.internal.direction(key)
-		if k, v, ok := longestPrefix(&n.internal.child[direction], key); ok {
+		if k, v, ok := longestPrefixHelper(&n.internal.child[direction], key); ok {
 			return k, v, ok
 		}
 		if direction == 1 {
-			return longestPrefix(&n.internal.child[0], key)
+			return longestPrefixHelper(&n.internal.child[0], key)
 		}
 	} else {
 		if bytes.HasPrefix(key, n.external.key) {
@@ -296,29 +262,29 @@ func longestPrefix(n *node, key []byte) ([]byte, interface{}, bool) {
 
 // Iterating elements from a given start key.
 // handle is called with arguments key and value (if handle returns `false`, the iteration is aborted)
-func (t *Trie) Walk(start []byte, handle func(key []byte, value interface{}) bool) bool {
-	if t.size == 0 {
+func (t *critBitTree) walk(start []byte, handle func(key []byte, value interface{}) bool) bool {
+	if t.items == 0 {
 		return true
 	}
 	var seek bool
 	if start != nil {
 		seek = true
 	}
-	return walk(&t.root, start, &seek, handle)
+	return walkHelper(&t.root, start, &seek, handle)
 }
 
-func walk(n *node, key []byte, seek *bool, handle func([]byte, interface{}) bool) bool {
+func walkHelper(n *node, key []byte, seek *bool, handle func([]byte, interface{}) bool) bool {
 	if n.internal != nil {
 		var direction int
 		if *seek {
 			direction = n.internal.direction(key)
 		}
-		if !walk(&n.internal.child[direction], key, seek, handle) {
+		if !walkHelper(&n.internal.child[direction], key, seek, handle) {
 			return false
 		}
 		if !(*seek) && direction == 0 {
 			// iteration another side
-			return walk(&n.internal.child[1], key, seek, handle)
+			return walkHelper(&n.internal.child[1], key, seek, handle)
 		}
 		return true
 	} else {
@@ -336,17 +302,17 @@ func walk(n *node, key []byte, seek *bool, handle func([]byte, interface{}) bool
 }
 
 // dump tree. (for debugging)
-func (t *Trie) Dump(w io.Writer) {
+func (t *critBitTree) dump(w io.Writer) {
 	if t.root.internal == nil && t.root.external == nil {
 		return
 	}
 	if w == nil {
 		w = os.Stdout
 	}
-	dump(w, &t.root, true, "")
+	dumpHelper(w, &t.root, true, "")
 }
 
-func dump(w io.Writer, n *node, right bool, prefix string) {
+func dumpHelper(w io.Writer, n *node, right bool, prefix string) {
 	var ownprefix string
 	if right {
 		ownprefix = prefix
@@ -366,7 +332,7 @@ func dump(w io.Writer, n *node, right bool, prefix string) {
 				nextprefix = prefix + "  "
 				right = false
 			}
-			dump(w, &in.child[i], right, nextprefix)
+			dumpHelper(w, &in.child[i], right, nextprefix)
 		}
 	} else {
 		fmt.Fprintf(w, "%s-- key=%d (%s)\n", ownprefix, n.external.key, key2str(n.external.key))
@@ -381,13 +347,4 @@ func key2str(key []byte) string {
 		}
 	}
 	return string(key)
-}
-
-// create a tree.
-func NewTrie() *Trie {
-	return &Trie{}
-}
-
-func init() {
-	buildMsbMatrix()
 }
