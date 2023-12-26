@@ -1,3 +1,7 @@
+
+ **ATTENTION** still in alpha stage!
+====================================
+
 ipcritbit
 =========
 A [critbit-tree](http://cr.yp.to/critbit.html) implementation in golang for fast IP lookup.
@@ -6,7 +10,7 @@ The [original](https://github.com/k-sone/critbitgo) has been forked, modified an
 Both IP versions are supported transparently. 
 
 Usage
---------
+-----
 
 ```go
 import "github.com/gaissmai/ipcritbit"
