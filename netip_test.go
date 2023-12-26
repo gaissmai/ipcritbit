@@ -124,36 +124,8 @@ func TestNetipWalk(t *testing.T) {
 	}
 
 	c = 0
-	rtbl.Walk(netip.Prefix{}, f)
+	rtbl.Walk(f)
 	if c != 15 {
 		t.Errorf("Walk() - %d: full walk", c)
-	}
-
-	p := netip.MustParsePrefix("192.168.1.1/32")
-	c = 0
-	rtbl.Walk(p, f)
-	if c != 6 {
-		t.Errorf("Walk() - %d: has start route v4", c)
-	}
-
-	p = netip.MustParsePrefix("2001:db8::/64")
-	c = 0
-	rtbl.Walk(p, f)
-	if c != 2 {
-		t.Errorf("Walk() - %d: has start route v6", c)
-	}
-
-	p = netip.MustParsePrefix("10.0.0.0/0")
-	c = 0
-	rtbl.Walk(p, f)
-	if c != 0 {
-		t.Errorf("Walk() - %d: not found start route v4", c)
-	}
-
-	p = netip.MustParsePrefix("dead:beef::ffee:aabb/96")
-	c = 0
-	rtbl.Walk(p, f)
-	if c != 0 {
-		t.Errorf("Walk() - %d: not found start route v4", c)
 	}
 }

@@ -134,36 +134,6 @@ func TestSize(t *testing.T) {
 	}
 }
 
-func TestLongestPrefix(t *testing.T) {
-	keys := []string{"a", "aa", "b", "bb", "ab", "ba", "aba", "bab"}
-	trie := buildTrie(t, keys)
-
-	expects := map[string]string{
-		"a":   "a",
-		"a^":  "a",
-		"aaa": "aa",
-		"abc": "ab",
-		"bac": "ba",
-		"bbb": "bb",
-		"bc":  "b",
-	}
-	for g, k := range expects {
-		if key, value, ok := trie.longestPrefix([]byte(g)); !ok || string(key) != k || value != k {
-			t.Errorf("longestPrefix() - invalid result - %s not %s", key, g)
-		}
-	}
-
-	if _, _, ok := trie.longestPrefix([]byte{}); ok {
-		t.Error("longestPrefix() - invalid result - not empty")
-	}
-	if _, _, ok := trie.longestPrefix([]byte("^")); ok {
-		t.Error("longestPrefix() - invalid result - not empty")
-	}
-	if _, _, ok := trie.longestPrefix([]byte("c")); ok {
-		t.Error("longestPrefix() - invalid result - not empty")
-	}
-}
-
 func TestWalk(t *testing.T) {
 	keys := []string{"", "a", "aa", "b", "bb", "ab", "ba", "aba", "bab"}
 	trie := buildTrie(t, keys)
@@ -175,7 +145,7 @@ func TestWalk(t *testing.T) {
 		}
 		return true
 	}
-	if !trie.walk([]byte{}, handle) {
+	if !trie.walk(handle) {
 		t.Error("walk() - invalid result")
 	}
 	if len(elems) != 9 {
@@ -185,64 +155,6 @@ func TestWalk(t *testing.T) {
 		if key != elems[i] {
 			t.Errorf("walk() - not found [%s]", key)
 		}
-	}
-
-	elems = make([]string, 0, len(keys))
-	if !trie.walk([]byte("ab"), handle) {
-		t.Error("walk() - invalid result")
-	}
-	if len(elems) != 6 {
-		t.Errorf("walk() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"ab", "aba", "b", "ba", "bab", "bb"} {
-		if key != elems[i] {
-			t.Errorf("walk() - not found [%s]", key)
-		}
-	}
-
-	elems = make([]string, 0, len(keys))
-	if !trie.walk(nil, handle) {
-		t.Error("walk() - invalid result")
-	}
-	if len(elems) != 9 {
-		t.Errorf("walk() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"", "a", "aa", "ab", "aba", "b", "ba", "bab", "bb"} {
-		if key != elems[i] {
-			t.Errorf("walk() - not found [%s]", key)
-		}
-	}
-
-	elems = make([]string, 0, len(keys))
-	handle = func(key []byte, value interface{}) bool {
-		if k := string(key); k == value {
-			elems = append(elems, k)
-		}
-		if string(key) == "aa" {
-			return false
-		}
-		return true
-	}
-	if trie.walk([]byte("a"), handle) {
-		t.Error("walk() - invalid result")
-	}
-	if len(elems) != 2 {
-		t.Errorf("walk() - invalid elems length [%v]", elems)
-	}
-	for i, key := range []string{"a", "aa"} {
-		if key != elems[i] {
-			t.Errorf("walk() - not found [%s]", key)
-		}
-	}
-
-	if trie.walk([]byte("^"), handle) {
-		t.Error("walk() - invalid result")
-	}
-	if trie.walk([]byte("aaa"), handle) {
-		t.Error("walk() - invalid result")
-	}
-	if trie.walk([]byte("c"), handle) {
-		t.Error("walk() - invalid result")
 	}
 }
 
@@ -262,6 +174,5 @@ func TestEmptyTree(t *testing.T) {
 	assert("contains", func() { trie.contains(key) })
 	assert("get", func() { trie.get(key) })
 	assert("delete", func() { trie.delete(key) })
-	assert("longestPrefix", func() { trie.longestPrefix(key) })
-	assert("walk", func() { trie.walk(key, handle) })
+	assert("walk", func() { trie.walk(handle) })
 }

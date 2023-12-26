@@ -100,6 +100,7 @@ func (t RouteTable) match6(key []byte) ([]byte, interface{}) {
 	return nil, nil
 }
 
+// lookup is IP prefix specific, see pfxToKey.
 func lookup(p *node, key []byte, backtracking bool) *node {
 	if p.internal != nil {
 		var direction int
@@ -149,34 +150,16 @@ func lookup(p *node, key []byte, backtracking bool) *node {
 	}
 }
 
-// Walk iterates routes from a given route, adapter for ipcritbit.walk
-// handle is called with arguments route and value (if handle returns `false`, the iteration is aborted)
-func (t RouteTable) Walk(p netip.Prefix, handle func(netip.Prefix, interface{}) bool) {
-	key := pfxToKey(p)
-	if key == nil {
-		t.tree4.walk(nil, func(currentKey []byte, value interface{}) bool {
-			return handle(keyToPfx(currentKey), value)
-		})
-
-		t.tree6.walk(nil, func(currentKey []byte, value interface{}) bool {
-			return handle(keyToPfx(currentKey), value)
-		})
-		return
-	}
-
-	if p.Addr().Is4() {
-		t.tree4.walk(key, func(currentKey []byte, value interface{}) bool {
-			return handle(keyToPfx(currentKey), value)
-		})
-
-		return
-	}
-
-	t.tree6.walk(key, func(currentKey []byte, value interface{}) bool {
-		return handle(keyToPfx(currentKey), value)
+// Walk iterates all routes.
+// callback is called with route and value as argumets (if callback returns `false`, the iteration is aborted)
+func (t RouteTable) Walk(callback func(prefix netip.Prefix, value interface{}) bool) {
+	t.tree4.walk(func(currentKey []byte, value interface{}) bool {
+		return callback(keyToPfx(currentKey), value)
 	})
 
-	return
+	t.tree6.walk(func(currentKey []byte, value interface{}) bool {
+		return callback(keyToPfx(currentKey), value)
+	})
 }
 
 // Dump routing table. (for debugging)
@@ -191,22 +174,23 @@ func (t RouteTable) Clear() {
 	t.tree6.clear()
 }
 
-// Returns number of routes, all IP versions.
+// Returns number of routes.
 func (t RouteTable) Size() int {
 	return t.tree4.items + t.tree6.items
 }
 
-// helpers, convert between keys []byte and netip.Prefix
+// helpers, convert between keys ([]byte) and netip.Prefix
 
+// +---------------------+
+// + <------ bytes ----->|
+// +--------------+------+
+// | ip address.. | mask |
+// +--------------+------+
 func pfxToKey(p netip.Prefix) []byte {
 	if !p.IsValid() {
-		return nil
+		panic("invalid Prefix")
 	}
-
-	b, err := p.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
+	b, _ := p.MarshalBinary()
 	return b
 }
 

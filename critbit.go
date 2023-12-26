@@ -233,70 +233,27 @@ func (t *critBitTree) size() int {
 	return t.items
 }
 
-// Search for the longest matching key from the beginning of the given key.
-// if `key` is in Trie, `ok` is true.
-func (t *critBitTree) longestPrefix(given []byte) (key []byte, value interface{}, ok bool) {
-	// an empty tree
-	if t.items == 0 {
-		return
-	}
-	return longestPrefixHelper(&t.root, given)
-}
-
-func longestPrefixHelper(n *node, key []byte) ([]byte, interface{}, bool) {
-	if n.internal != nil {
-		direction := n.internal.direction(key)
-		if k, v, ok := longestPrefixHelper(&n.internal.child[direction], key); ok {
-			return k, v, ok
-		}
-		if direction == 1 {
-			return longestPrefixHelper(&n.internal.child[0], key)
-		}
-	} else {
-		if bytes.HasPrefix(key, n.external.key) {
-			return n.external.key, n.external.value, true
-		}
-	}
-	return nil, nil, false
-}
-
 // Iterating elements from a given start key.
 // handle is called with arguments key and value (if handle returns `false`, the iteration is aborted)
-func (t *critBitTree) walk(start []byte, handle func(key []byte, value interface{}) bool) bool {
+func (t *critBitTree) walk(handle func(key []byte, value interface{}) bool) bool {
 	if t.items == 0 {
 		return true
 	}
-	var seek bool
-	if start != nil {
-		seek = true
-	}
-	return walkHelper(&t.root, start, &seek, handle)
+	return walkHelper(&t.root, handle)
 }
 
-func walkHelper(n *node, key []byte, seek *bool, handle func([]byte, interface{}) bool) bool {
+func walkHelper(n *node, handle func([]byte, interface{}) bool) bool {
 	if n.internal != nil {
 		var direction int
-		if *seek {
-			direction = n.internal.direction(key)
-		}
-		if !walkHelper(&n.internal.child[direction], key, seek, handle) {
+		if !walkHelper(&n.internal.child[direction], handle) {
 			return false
 		}
-		if !(*seek) && direction == 0 {
+		if direction == 0 {
 			// iteration another side
-			return walkHelper(&n.internal.child[1], key, seek, handle)
+			return walkHelper(&n.internal.child[1], handle)
 		}
 		return true
 	} else {
-		if *seek {
-			if bytes.Equal(n.external.key, key) {
-				// seek completed
-				*seek = false
-			} else {
-				// key is not in Trie
-				return false
-			}
-		}
 		return handle(n.external.key, n.external.value)
 	}
 }
